@@ -1,0 +1,13 @@
+problem 1 base query
+    HashAggregate  (cost=1559.25..1559.29 rows=4 width=12) Group Key: m.namefirst, m.namelast
+      ->  Nested Loop  (cost=1540.37..1559.23 rows=4 width=12)
+        ->  Merge Join  (cost=1540.08..1550.08 rows=4 width=9)
+              Merge Cond: (((a.teamid)::text = (t.teamid)::text) AND ((a.lgid)::text = (t.lgid)::text) AND (a.yearid = t.yearid))
+            ->  Merge Join  (cost=1540.08..1550.08 rows=4 width=9)
+                Merge Cond: (((a.teamid)::text = (t.teamid)::text) AND ((a.lgid)::text = (t.lgid)::text) AND (a.yearid = t.yearid))->  Sort  (cost=1420.84..1423.24 rows=960 width=20)
+    a: pitching
+    t: teams
+    m: master
+
+problem 1 query with index on pitching.teamid
+
