@@ -14,6 +14,8 @@ ALTER TABLE public.teams
 -- 5
 
 -- 6
+ALTER TABLE public.teams
+	ADD CONSTRAINT teamNameConstraint CHECK (name != null);
 
 -- 7
 ALTER TABLE public.master
