@@ -29,6 +29,55 @@ problem 1 query with index on pitching.teamid, pitching.yearid, teams.teamid, te
                                 Index Cond: (yearid = t.yearid)
     improvements:
         cost decreased by: 1559-851 = 708
+        
+        ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+problem 2 base query
+
+Sort  (cost=158.07..158.20 rows=52 width=24)
+  Sort Key: batting.yearid
+  ->  Nested Loop  (cost=141.81..156.59 rows=52 width=24)
+        ->  Nested Loop  (cost=141.39..146.95 rows=9 width=30)
+              ->  HashAggregate  (cost=141.10..141.19 rows=9 width=9)
+                    Group Key: (schoolsplayers.masterid)::text
+                    ->  Hash Semi Join  (cost=18.38..141.08 rows=9 width=9)
+                          Hash Cond: ((schoolsplayers.schoolid)::text = (schools.schoolid)::text)
+                          ->  Seq Scan on schoolsplayers  (cost=0.00..106.47 rows=6147 width=17)
+                          ->  Hash  (cost=18.36..18.36 rows=1 width=9)
+                                ->  Seq Scan on schools  (cost=0.00..18.36 rows=1 width=9)
+                                      Filter: ((schoolname)::text ~~ '%Utah State%'::text)
+              ->  Index Scan using master_pkey on master  (cost=0.29..0.63 rows=1 width=21)
+                    Index Cond: ((masterid)::text = (schoolsplayers.masterid)::text)
+        ->  Index Scan using batting_pkey on batting  (cost=0.42..1.00 rows=6 width=21)
+              Index Cond: ((masterid)::text = (master.masterid)::text)
+              Filter: ((ab IS NOT NULL) AND (ab > 0))
+              
+              
+problem 2 with index on public.schoolsplayers
+
+
+Sort  (cost=63.62..63.75 rows=52 width=24)
+  Sort Key: batting.yearid
+  ->  Nested Loop  (cost=47.57..62.14 rows=52 width=24)
+        ->  Nested Loop  (cost=47.15..52.71 rows=9 width=30)
+              ->  HashAggregate  (cost=46.86..46.95 rows=9 width=9)
+                    Group Key: (schoolsplayers.masterid)::text
+                    ->  Nested Loop  (cost=4.35..46.84 rows=9 width=9)
+                          ->  Seq Scan on schools  (cost=0.00..18.36 rows=1 width=9)
+                                Filter: ((schoolname)::text ~~ '%Utah State%'::text)
+                          ->  Bitmap Heap Scan on schoolsplayers  (cost=4.35..28.39 rows=9 width=17)
+                                Recheck Cond: ((schoolid)::text = (schools.schoolid)::text)
+                                ->  Bitmap Index Scan on schoolp  (cost=0.00..4.35 rows=9 width=0)
+                                      Index Cond: ((schoolid)::text = (schools.schoolid)::text)
+              ->  Index Scan using master_pkey on master  (cost=0.29..0.63 rows=1 width=21)
+                    Index Cond: ((masterid)::text = (schoolsplayers.masterid)::text)
+        ->  Index Scan using bmid on batting  (cost=0.42..0.97 rows=6 width=21)
+              Index Cond: ((masterid)::text = (master.masterid)::text)
+              Filter: ((ab IS NOT NULL) AND (ab > 0))
+
+
+    improvements:
+        cost decreased by: 158 - 63 = 95
+
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -80,6 +129,15 @@ problem 3 query with index on appearances.masterid
 
     improvements:
         cost decreased by: 6493 - 1065 = 5428
+        
+        ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 
+question 4 base query
+
+
+
+
+
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 
@@ -197,3 +255,103 @@ Nested Loop  (cost=20871.42..23596.10 rows=1 width=40)
 improvement:
   cost improvement: 28303 - 20871 = 7432
 
+        ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 
+question 6 base query
+
+Unique  (cost=6606.17..6606.18 rows=1 width=12)
+  ->  Sort  (cost=6606.17..6606.18 rows=1 width=12)
+        Sort Key: master.namelast, master.namefirst
+        ->  Nested Loop  (cost=4798.34..6606.16 rows=1 width=12)
+              ->  Nested Loop  (cost=4798.05..6605.83 rows=1 width=36)
+                    ->  Nested Loop  (cost=4797.35..6597.17 rows=1 width=31)
+                          ->  Nested Loop  (cost=4797.07..6596.85 rows=1 width=42)
+                                Join Filter: ((b.masterid)::text = (b_2.masterid)::text)
+                                ->  Nested Loop  (cost=4796.65..6596.31 rows=1 width=22)
+                                      ->  Nested Loop  (cost=4796.37..6583.87 rows=39 width=33)
+                                            ->  Hash Join  (cost=4795.95..6054.69 rows=994 width=13)
+                                                  Hash Cond: (((t.teamid)::text = (b.teamid)::text) AND (t.yearid = b.yearid) AND ((t.lgid)::text = (b.lgid)::text))
+                                                  ->  Seq Scan on teams t  (cost=0.00..118.31 rows=101 width=11)
+                                                        Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                                                  ->  Hash  (cost=2508.89..2508.89 rows=97889 width=20)
+                                                        ->  Seq Scan on batting b  (cost=0.00..2508.89 rows=97889 width=20)
+                                            ->  Index Scan using batting_pkey on batting b_1  (cost=0.42..0.52 rows=1 width=20)
+                                                  Index Cond: (((masterid)::text = (b.masterid)::text) AND (yearid = (b.yearid + 1)))
+                                      ->  Index Scan using teams_pkey on teams t_1  (cost=0.28..0.31 rows=1 width=11)
+                                            Index Cond: ((yearid = b_1.yearid) AND ((lgid)::text = (b_1.lgid)::text) AND ((teamid)::text = (b_1.teamid)::text))
+                                            Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                                ->  Index Scan using batting_pkey on batting b_2  (cost=0.42..0.52 rows=1 width=20)
+                                      Index Cond: (((masterid)::text = (b_1.masterid)::text) AND (yearid = (b_1.yearid + 1)))
+                          ->  Index Scan using teams_pkey on teams t_2  (cost=0.28..0.31 rows=1 width=11)
+                                Index Cond: ((yearid = b_2.yearid) AND ((lgid)::text = (b_2.lgid)::text) AND ((teamid)::text = (b_2.teamid)::text))
+                                Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                    ->  Nested Loop  (cost=0.70..8.65 rows=1 width=17)
+                          Join Filter: ((b_2.yearid + 1) = b_3.yearid)
+                          ->  Index Scan using teamyear on teams t_3  (cost=0.28..0.67 rows=1 width=11)
+                                Index Cond: (yearid = (b_2.yearid + 1))
+                                Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                          ->  Index Scan using batting_pkey on batting b_3  (cost=0.42..7.97 rows=1 width=20)
+                                Index Cond: (((masterid)::text = (b.masterid)::text) AND (yearid = t_3.yearid))
+                                Filter: (((t_3.teamid)::text = (teamid)::text) AND ((t_3.lgid)::text = (lgid)::text))
+              ->  Index Scan using master_pkey on master  (cost=0.29..0.32 rows=1 width=21)
+                    Index Cond: ((masterid)::text = (b.masterid)::text)
+                    
+                    
+                    
+problem 6 query with indices on: 
+                        CREATE INDEX byear ON public.batting (yearid); 	 
+                    CREATE INDEX battingID ON public.batting (teamid);                   
+
+
+
+Unique  (cost=4791.42..4791.43 rows=1 width=12)
+  ->  Sort  (cost=4791.42..4791.42 rows=1 width=12)
+        Sort Key: master.namelast, master.namefirst
+        ->  Nested Loop  (cost=4364.07..4791.41 rows=1 width=12)
+              ->  Nested Loop  (cost=4363.78..4791.07 rows=1 width=36)
+                    ->  Nested Loop  (cost=4363.08..4782.41 rows=1 width=31)
+                          ->  Nested Loop  (cost=4362.80..4782.10 rows=1 width=42)
+                                Join Filter: ((b.masterid)::text = (b_2.masterid)::text)
+                                ->  Nested Loop  (cost=4362.38..4781.56 rows=1 width=22)
+                                      Join Filter: (((t_1.teamid)::text = (b_1.teamid)::text) AND (t_1.yearid = b_1.yearid) AND ((t_1.lgid)::text = (b_1.lgid)::text))
+                                      ->  Hash Join  (cost=4361.96..4510.54 rows=502 width=24)
+                                            Hash Cond: (t_1.yearid = (b.yearid + 1))
+                                            ->  Seq Scan on teams t_1  (cost=0.00..118.31 rows=101 width=11)
+                                                  Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                                            ->  Hash  (cost=4349.53..4349.53 rows=994 width=13)
+                                                  ->  Nested Loop  (cost=22.65..4349.53 rows=994 width=13)
+                                                        ->  Seq Scan on teams t  (cost=0.00..118.31 rows=101 width=11)
+                                                              Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                                                        ->  Bitmap Heap Scan on batting b  (cost=22.65..41.88 rows=1 width=20)
+                                                              Recheck Cond: (((teamid)::text = (t.teamid)::text) AND (yearid = t.yearid))
+                                                              Filter: ((t.lgid)::text = (lgid)::text)
+                                                              ->  BitmapAnd  (cost=22.65..22.65 rows=5 width=0)
+                                                                    ->  Bitmap Index Scan on battingid  (cost=0.00..11.11 rows=661 width=0)
+                                                                          Index Cond: ((teamid)::text = (t.teamid)::text)
+                                                                    ->  Bitmap Index Scan on byear  (cost=0.00..11.29 rows=685 width=0)
+                                                                          Index Cond: (yearid = t.yearid)
+                                      ->  Index Scan using batting_pkey on batting b_1  (cost=0.42..0.52 rows=1 width=20)
+                                            Index Cond: (((masterid)::text = (b.masterid)::text) AND (yearid = (b.yearid + 1)))
+                                ->  Index Scan using batting_pkey on batting b_2  (cost=0.42..0.52 rows=1 width=20)
+                                      Index Cond: (((masterid)::text = (b_1.masterid)::text) AND (yearid = (b_1.yearid + 1)))
+                          ->  Index Scan using teams_pkey on teams t_2  (cost=0.28..0.31 rows=1 width=11)
+                                Index Cond: ((yearid = b_2.yearid) AND ((lgid)::text = (b_2.lgid)::text) AND ((teamid)::text = (b_2.teamid)::text))
+                                Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                    ->  Nested Loop  (cost=0.70..8.65 rows=1 width=17)
+                          Join Filter: ((b_2.yearid + 1) = b_3.yearid)
+                          ->  Index Scan using teams_yearid_idx on teams t_3  (cost=0.28..0.67 rows=1 width=11)
+                                Index Cond: (yearid = (b_2.yearid + 1))
+                                Filter: ((name)::text ~~ '%New York Yankees%'::text)
+                          ->  Index Scan using batting_pkey on batting b_3  (cost=0.42..7.97 rows=1 width=20)
+                                Index Cond: (((masterid)::text = (b.masterid)::text) AND (yearid = t_3.yearid))
+                                Filter: (((t_3.teamid)::text = (teamid)::text) AND ((t_3.lgid)::text = (lgid)::text))
+              ->  Index Scan using master_pkey on master  (cost=0.29..0.32 rows=1 width=21)
+                    Index Cond: ((masterid)::text = (b.masterid)::text)
+
+
+improvement:
+  cost improvement: 6606 - 4791 = 1815
+
+        ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 
+question 7 base query
