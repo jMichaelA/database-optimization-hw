@@ -1,3 +1,4 @@
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 problem 1 base query
     HashAggregate  (cost=1559.25..1559.29 rows=4 width=12) Group Key: m.namefirst, m.namelast
       ->  Nested Loop  (cost=1540.37..1559.23 rows=4 width=12)
@@ -9,5 +10,190 @@ problem 1 base query
     t: teams
     m: master
 
-problem 1 query with index on pitching.teamid
+the biggest cost is on the join on teamid, lgid, and yearid
+
+problem 1 query with index on pitching.teamid, pitching.yearid, teams.teamid, teams.yearid
+
+    HashAggregate  (cost=851.40..851.44 rows=4 width=12) Group Key: m.namefirst, m.namelast
+    ->  Nested Loop  (cost=12.64..851.38 rows=4 width=12)
+        ->  Nested Loop  (cost=12.35..842.24 rows=4 width=9)
+              ->  Seq Scan on teams t  (cost=0.00..118.31 rows=36 width=11)
+                    Filter: ((name)::text ~~ 'Montreal Expos'::text)
+              ->  Bitmap Heap Scan on pitching a  (cost=12.35..20.10 rows=1 width=20)
+                    Recheck Cond: (((teamid)::text = (t.teamid)::text) AND (yearid = t.yearid))
+                    Filter: ((w > 20) AND ((t.lgid)::text = (lgid)::text))
+                    ->  BitmapAnd  (cost=12.35..12.35 rows=2 width=0)
+                          ->  Bitmap Index Scan on pitching_teamid_idx  (cost=0.00..6.02 rows=290 width=0)
+                                Index Cond: ((teamid)::text = (t.teamid)::text)
+                          ->  Bitmap Index Scan on pitching_yearid_idx  (cost=0.00..6.08 rows=298 width=0)
+                                Index Cond: (yearid = t.yearid)
+    improvements:
+        cost decreased by: 1559-851 = 708
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+problem 3 base query 
+
+    HashAggregate  (cost=6493.57..6540.87 rows=4730 width=36) Group Key: jeter.masterid, jetert.masterid, jeterty.masterid, jetertt.masterid
+     ->  Nested Loop  (cost=3383.74..6446.27 rows=4730 width=36)
+        Join Filter: ((jetertt.masterid)::text <> (jeter.masterid)::text)
+        ->  Hash Join  (cost=3383.32..6178.26 rows=423 width=38)
+              Hash Cond: ((jeterty.masterid)::text = (jetert.masterid)::text)
+              Join Filter: ((jeter.teamid)::text <> (jeterty.teamid)::text)
+              ->  Seq Scan on appearances jeterty  (cost=0.00..2421.46 rows=98146 width=20)
+              ->  Hash  (cost=3382.62..3382.62 rows=56 width=22)
+                    ->  Nested Loop  (cost=0.83..3382.62 rows=56 width=22)
+                          ->  Nested Loop  (cost=0.42..3379.46 rows=5 width=20)
+                                ->  Seq Scan on master m  (cost=0.00..676.31 rows=1 width=9)
+                                      Filter: (((namelast)::text = 'Jeter'::text) AND ((namefirst)::text = 'Derek'::text))
+                                ->  Index Scan using appearances_pkey on appearances jeter  (cost=0.42..2703.08 rows=7 width=20)
+                                      Index Cond: ((masterid)::text = (m.masterid)::text)
+                          ->  Index Scan using appearances_pkey on appearances jetert  (cost=0.42..0.62 rows=1 width=20)
+                                Index Cond: ((yearid = jeter.yearid) AND ((teamid)::text = (jeter.teamid)::text))
+                                Filter: (((jeter.masterid)::text <> (masterid)::text) AND ((jeter.lgid)::text = (lgid)::text))
+
+    m: master
+    jeter: appearances
+    jeterT: appearances
+    jetterTT: appearances
+
+problem 3 query with index on appearances.masterid
+
+    HashAggregate  (cost=1065.23..1112.53 rows=4730 width=36) Group Key: jeter.masterid, jetert.masterid, jeterty.masterid, jetertt.masterid
+       ->  Nested Loop  (cost=5.72..1017.93 rows=4730 width=36)
+        Join Filter: ((jetertt.masterid)::text <> (jeter.masterid)::text)
+        ->  Nested Loop  (cost=5.31..749.92 rows=423 width=38)
+              Join Filter: ((jeter.teamid)::text <> (jeterty.teamid)::text)
+              ->  Nested Loop  (cost=4.89..710.63 rows=56 width=22)
+                    ->  Nested Loop  (cost=4.47..707.48 rows=5 width=20)
+                          ->  Seq Scan on master m  (cost=0.00..676.31 rows=1 width=9)
+                                Filter: (((namelast)::text = 'Jeter'::text) AND ((namefirst)::text = 'Derek'::text))
+                          ->  Bitmap Heap Scan on appearances jeter  (cost=4.47..31.10 rows=7 width=20)
+                                Recheck Cond: ((masterid)::text = (m.masterid)::text)
+                                ->  Bitmap Index Scan on appearances_masterid_idx  (cost=0.00..4.47 rows=7 width=0)
+                                      Index Cond: ((masterid)::text = (m.masterid)::text)
+                    ->  Index Scan using appearances_pkey on appearances jetert  (cost=0.42..0.62 rows=1 width=20)
+                          Index Cond: ((yearid = jeter.yearid) AND ((teamid)::text = (jeter.teamid)::text))
+                          Filter: (((jeter.masterid)::text <> (masterid)::text) AND ((jeter.lgid)::text = (lgid)::text))
+              ->  Index Scan using appearances_masterid_idx on appearances jeterty  (cost=0.42..0.61 rows=7 width=20)
+                    Index Cond: ((masterid)::text = (jetert.masterid)::text)
+
+    improvements:
+        cost decreased by: 6493 - 1065 = 5428
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 
+question 5 base query
+
+Nested Loop  (cost=28303.72..33573.45 rows=1 width=40)
+  Join Filter: ((batting_1.yearid = batting_2.yearid) AND ((batting_1.teamid)::text = (batting_2.teamid)::text) AND ((batting_1.lgid)::text = (batting_2.lgid)::text) AND ((((count(batting.masterid)) / NULLIF((count(batting_2.masterid)), 0)))::numeric >= 0.75))
+  ->  Nested Loop  (cost=24881.23..29717.00 rows=1 width=47)
+        ->  GroupAggregate  (cost=24880.95..29675.35 rows=5 width=20)
+              ->  Merge Join  (cost=24880.95..29675.25 rows=5 width=20)
+                    Merge Cond: (((batting.teamid)::text = (batting_1.teamid)::text) AND (batting.yearid = batting_1.yearid) AND ((batting.lgid)::text = (batting_1.lgid)::text))
+                    Join Filter: (((sum(batting_1.h) / NULLIF(sum(batting_1.ab), 0))) >= ((sum(batting.h) / NULLIF(sum(batting.ab), 0))))
+                    ->  GroupAggregate  (cost=12968.33..15376.05 rows=13681 width=28)
+                          ->  Sort  (cost=12968.33..13213.05 rows=97889 width=28)
+                                Sort Key: batting.teamid, batting.yearid, batting.lgid, batting.masterid
+                                ->  Seq Scan on batting  (cost=0.00..2508.89 rows=97889 width=28)
+                    ->  Materialize  (cost=11912.62..13991.06 rows=9136 width=19)
+                          ->  GroupAggregate  (cost=11912.62..13876.86 rows=9136 width=19)
+                                ->  Sort  (cost=11912.62..12141.02 rows=91360 width=19)
+                                      Sort Key: batting_1.teamid, batting_1.yearid, batting_1.lgid
+                                      ->  Seq Scan on batting batting_1  (cost=0.00..2508.89 rows=91360 width=19)
+                                            Filter: (ab IS NOT NULL)
+        ->  Index Scan using teams_pkey on teams  (cost=0.28..8.31 rows=1 width=28)
+              Index Cond: ((yearid = batting_1.yearid) AND ((lgid)::text = (batting_1.lgid)::text) AND ((teamid)::text = (batting_1.teamid)::text))
+  ->  HashAggregate  (cost=3422.49..3513.85 rows=9136 width=20)
+        ->  Seq Scan on batting batting_2  (cost=0.00..2508.89 rows=91360 width=20)
+              Filter: (ab IS NOT NULL)
+
+Notes:
+  I tried adding some indexes on the batting table, but found no change in performance.
+  After looking through the query I found that there was 4 instances where sum was not needed so getting rid of that increased performance slightly
+
+after done with modified query
+
+SELECT 
+    C.yearID as year,
+    name as teamName,
+    C.lgID as league,
+    D.cnt as totalBatters,
+    C.cnt as aboveAverageBatters
+FROM
+    (SELECT 
+        count(masterID) as cnt, A.yearID, A.teamID, A.lgID
+    FROM
+        (select 
+        masterID,
+            teamID,
+            yearID,
+            lgID,
+      --      sum(AB), ******** removed ********
+      --      sum(H), ******** removed ********
+            sum(H) / NULLIF(sum(AB),0) as avg
+    FROM
+        batting
+    GROUP BY teamID , yearID , lgID , masterID
+    ) B, (select 
+        teamID,
+            yearID,
+            lgID,
+      --      sum(AB), ******** removed ********
+      --      sum(H), ******** removed ********
+            sum(H) / NULLIF(sum(AB), 0) as avg
+    FROM
+        batting
+    WHERE ab is not null
+    GROUP BY teamID , yearID , lgID
+    ) A
+    WHERE
+        A.avg >= B.avg AND A.teamID = B.teamID
+            AND A.yearID = B.yearID
+            AND A.lgID = B.lgID
+    GROUP BY A.teamID , A.yearID , A.lgID
+    ) C,
+    (SELECT 
+        count(masterID) as cnt, yearID, teamID, lgID
+    FROM
+        batting
+    WHERE ab is not null
+    GROUP BY yearID , teamID , lgID) D, 
+    teams
+WHERE
+    C.cnt / NULLIF(D.cnt, 0) >= 0.75
+        AND C.yearID = D.yearID
+        AND C.teamID = D.teamID
+        AND C.lgID = D.lgID
+        AND teams.yearID = C.yearID
+        AND teams.lgID = C.lgID
+        AND teams.teamID = C.teamID
+
+-- query after change
+
+Nested Loop  (cost=20871.42..23596.10 rows=1 width=40)
+  Join Filter: ((a.yearid = batting_2.yearid) AND ((a.teamid)::text = (batting_2.teamid)::text) AND ((a.lgid)::text = (batting_2.lgid)::text) AND ((((count(batting.masterid)) / NULLIF((count(batting_2.masterid)), 0)))::numeric >= 0.75))
+  ->  Nested Loop  (cost=17448.93..19739.65 rows=1 width=47)
+        ->  GroupAggregate  (cost=17448.65..19698.00 rows=5 width=20)
+              ->  Merge Join  (cost=17448.65..19697.90 rows=5 width=20)
+                    Merge Cond: (((batting.teamid)::text = (a.teamid)::text) AND (batting.yearid = a.yearid) AND ((batting.lgid)::text = (a.lgid)::text))
+                    Join Filter: (a.avg >= ((sum(batting.h) / NULLIF(sum(batting.ab), 0))))
+                    ->  GroupAggregate  (cost=12968.33..14886.60 rows=13681 width=28)
+                          ->  Sort  (cost=12968.33..13213.05 rows=97889 width=28)
+                                Sort Key: batting.teamid, batting.yearid, batting.lgid, batting.masterid
+                                ->  Seq Scan on batting  (cost=0.00..2508.89 rows=97889 width=28)
+                    ->  Sort  (cost=4480.32..4503.16 rows=9136 width=19)
+                          Sort Key: a.teamid, a.yearid, a.lgid
+                          ->  Subquery Scan on a  (cost=3650.89..3879.29 rows=9136 width=19)
+                                ->  HashAggregate  (cost=3650.89..3787.93 rows=9136 width=19)
+                                      ->  Seq Scan on batting batting_1  (cost=0.00..2508.89 rows=91360 width=19)
+                                            Filter: (ab IS NOT NULL)
+        ->  Index Scan using teams_pkey on teams  (cost=0.28..8.31 rows=1 width=28)
+              Index Cond: ((yearid = a.yearid) AND ((lgid)::text = (a.lgid)::text) AND ((teamid)::text = (a.teamid)::text))
+  ->  HashAggregate  (cost=3422.49..3513.85 rows=9136 width=20)
+        ->  Seq Scan on batting batting_2  (cost=0.00..2508.89 rows=91360 width=20)
+              Filter: (ab IS NOT NULL)
+
+improvement:
+  cost improvement: 28303 - 20871 = 7432
 
