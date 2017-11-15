@@ -134,9 +134,41 @@ problem 3 query with index on appearances.masterid
 -- 
 question 4 base query
 
-
-
-
+Seq Scan on teams t  (cost=0.00..23917.46 rows=14 width=25)
+  Filter: (w = (SubPlan 1))
+  SubPlan 1
+    ->  Aggregate  (cost=8.66..8.67 rows=1 width=4)
+          ->  Index Scan using teams_yearid_idx on teams y  (cost=0.28..8.61 rows=19 width=4)
+                Index Cond: (t.yearid = yearid)
+                
+                
+We changed a subselect WHERE clause to a Join statement and got:  
+SELECT name, t.yearid, w
+	FROM teams t
+	
+JOIN (
+     SELECT 
+         max(w), yearid
+         from teams 
+         group by w, yearid
+    ) as y 
+        ON t.yearid = y.yearid  
+        AND t.w = y.max
+        ORDER BY yearid ASC
+        
+Sort  (cost=314.82..314.87 rows=19 width=25)
+  Sort Key: t.yearid
+  ->  Hash Join  (cost=284.66..314.42 rows=19 width=25)
+        Hash Cond: ((teams.yearid = t.yearid) AND ((max(teams.w)) = t.w))
+        ->  HashAggregate  (cost=132.04..134.79 rows=275 width=8)
+              Group Key: teams.w, teams.yearid
+              ->  Seq Scan on teams  (cost=0.00..111.45 rows=2745 width=8)
+        ->  Hash  (cost=111.45..111.45 rows=2745 width=25)
+              ->  Seq Scan on teams t  (cost=0.00..111.45 rows=2745 width=25)	
+              
+Which gave us very different costs in the end. 			  
+Startup Cost = 0 - 314  = -314
+Total Cost   = 23917 - 314 = 23603		        
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
