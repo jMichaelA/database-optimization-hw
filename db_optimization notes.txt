@@ -417,6 +417,11 @@ WHERE
         AND A.teamID = B.teamID
         AND A.lgID = B.lgID
         AND teams.yearID = A.yearID
-        AND teams.teamID = A.teamID		
+--      AND teams.lgID = A.lgID    ********Removed********
+        AND teams.teamID = A.teamID 	
+        
+
+
+       
 
         
