@@ -5,8 +5,16 @@ CREATE INDEX ON public.teams (teamid);
 CREATE INDEX ON public.teams (yearid);
 
 
+-- 2
+CREATE INDEX schoolp ON public.schoolsplayers (schoolid);
+
+
 -- 3
 CREATE INDEX ON public.appearances (masterid);
+
+
+-- 4
+
 
 -- 5
 SELECT
@@ -73,3 +81,13 @@ WHERE
         AND teams.lgID = C.lgID
         AND teams.teamID = C.teamID
 ;
+
+
+-- 6
+CREATE INDEX byear ON public.batting (yearid); 	 
+CREATE INDEX battingID ON public.batting (teamid); 
+
+
+-- 7 
+
+
