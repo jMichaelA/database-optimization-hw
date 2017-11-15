@@ -355,3 +355,43 @@ improvement:
         ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 
 question 7 base query
+
+Nested Loop  (cost=1616.76..1667.75 rows=1 width=44)
+  ->  Merge Join  (cost=1616.48..1667.25 rows=1 width=38)
+        Merge Cond: ((a.yearid = ((b.yearid + 1))) AND ((a.teamid)::text = (b.teamid)::text) AND ((a.lgid)::text = (b.lgid)::text))
+        Join Filter: ((a.s * '2'::double precision) <= b.s)
+        ->  Sort  (cost=808.24..813.32 rows=2030 width=19)
+              Sort Key: a.yearid, a.teamid, a.lgid
+              ->  Subquery Scan on a  (cost=656.12..696.72 rows=2030 width=19)
+                    ->  HashAggregate  (cost=656.12..676.42 rows=2030 width=19)
+                          Group Key: salaries.yearid, salaries.teamid, salaries.lgid
+                          ->  Seq Scan on salaries  (cost=0.00..416.56 rows=23956 width=19)
+        ->  Sort  (cost=808.24..813.32 rows=2030 width=19)
+              Sort Key: ((b.yearid + 1)), b.teamid, b.lgid
+              ->  Subquery Scan on b  (cost=656.12..696.72 rows=2030 width=19)
+                    ->  HashAggregate  (cost=656.12..676.42 rows=2030 width=19)
+                          Group Key: salaries_1.yearid, salaries_1.teamid, salaries_1.lgid
+                          ->  Seq Scan on salaries salaries_1  (cost=0.00..416.56 rows=23956 width=19)
+  ->  Index Scan using teams_pkey on teams  (cost=0.28..0.49 rows=1 width=28)
+        Index Cond: ((yearid = a.yearid) AND ((lgid)::text = (a.lgid)::text) AND ((teamid)::text = (a.teamid)::text))
+        
+Things I have tried to reduce the cost:
+
+CREATE INDEX teamid ON public.salaries (teamid);  	//nothing                   
+CREATE INDEX yearid ON public.salaries (yearid); 	//nothing                     
+CREATE INDEX lgid ON public.salaries (lgid);		//nothing        			  
+CREATE INDEX salary ON public.salaries (salary);	//nothing                     
+
+CREATE INDEX tteamid ON public.teams (teamid); 	    //nothing                   
+CREATE INDEX tyearid ON public.teams (yearid);	    //nothing                     
+CREATE INDEX tlgid ON public.teams (lgid);			//nothing
+CREATE INDEX tname ON public.teams (name);			//nothing                     
+
+I deleted the line: AND teams.lgID = A.lgID
+and that didn't lower the cost and still gives the same result. 
+
+
+
+        
+
+
