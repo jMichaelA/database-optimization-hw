@@ -389,9 +389,34 @@ CREATE INDEX tname ON public.teams (name);			//nothing
 
 I deleted the line: AND teams.lgID = A.lgID
 and that didn't lower the cost and still gives the same result. 
+This change resulted in the query looking like: 
 
 
+SELECT 
+    name,
+    A.lgID,
+    A.S as TotalSalary,
+    A.yearID as Year,
+    B.S as PreviousYearSalary,
+    B.yearID as PreviousYear
+FROM
+    (SELECT 
+        sum(salary) as S, yearID, teamID, lgID
+    FROM
+        salaries
+    group by yearID , teamID , lgID) A,
+    (SELECT 
+        sum(salary) as S, yearID, teamID, lgID
+    FROM
+        salaries
+    group by yearID , teamID , lgID) B,
+    teams
+WHERE
+    A.yearID = B.yearID + 1
+        AND (A.S * 2) <= (B.S)
+        AND A.teamID = B.teamID
+        AND A.lgID = B.lgID
+        AND teams.yearID = A.yearID
+        AND teams.teamID = A.teamID		
 
         
-
-
