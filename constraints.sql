@@ -1,45 +1,46 @@
 -- 1
+--sets the default at bat value to 20.
 ALTER TABLE public.batting ALTER COLUMN ab SET DEFAULT 20;
 
 -- 2
+--Checks to see if a player has more hits than times at bat.
 ALTER TABLE public.batting 
         ADD CONSTRAINT batting_constraint CHECK (h > ab);
 
 -- 3
+--Checks to make sure league names are only NL or AL.
 ALTER TABLE public.teams
         ADD CONSTRAINT league_constraint CHECK (lgid IN ('NL','AL'));
 
 -- 4
-CREATE OR REPLACE FUNCTION loose()
-RETURNS TRIGGER AS $loose$
+-- Checks to see if team has lost more than 160 games, if so, their batting records for that season are deleted.
+CREATE OR REPLACE FUNCTION loose_delete() 
+RETURNS TRIGGER AS $loose_delete$
 
 DECLARE
 	team_id varchar(3);
-	year_id int4;
+	year_id int(4);
 
   BEGIN
-
 	SELECT teamid, yearid INTO team_id, year_id
 		FROM teams
 		WHERE l > 161;
-
-  THEN
-  
-	DELETE *
-		FROM batting 
-		WHERE teamid = team_id AND yearid = year_id
-	RETURN NULL;
+        
+          IF(team_id) THEN
+                DELETE *
+                        FROM batting 
+                        WHERE teamid = team_id AND yearid = year_id
+          END IF;
+          RETURN NEW;
 END;
-$loose$ LANGUAGE plpgsql;
+$loose_delete$ 
+LANGUAGE plpgsql;
 
 
-
-CREATE TRIGGER loose
+CREATE TRIGGER team_records_delete
 	AFTER INSERT OR UPDATE ON teams
 	FOR EACH ROW
-	EXECUTE PROCEDURE loose();
-	
-	
+	EXECUTE PROCEDURE loose_delete();
 
 -- 5
 
@@ -84,9 +85,11 @@ FOR EACH ROW
 EXECUTE PROCEDURE add_if_hall_of_fame();
 
 -- 6
+--Checks to make sure all teams have a name, and that there aren't any nulls.
 ALTER TABLE public.teams
 	ADD CONSTRAINT teamNameConstraint CHECK (name != null);
 
 -- 7
+--Makes sure all the combined first and last names are unique.
 ALTER TABLE public.master
 	ADD CONSTRAINT nameConstraint UNIQUE (namefirst, namelast); 
