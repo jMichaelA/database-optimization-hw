@@ -13,6 +13,41 @@ ALTER TABLE public.teams
 
 -- 5
 
+-- procedure checks to see after any record is inserted or deleted
+--      to see if any player should be in hall of fame
+CREATE OR REPLACE FUNCTION add_if_hall_of_fame( ) 
+    RETURNS TRIGGER AS $add_if_hall_of_fame$
+DECLARE
+        player_id varchar(12);
+        season int4;
+    BEGIN
+        WITH mvp as (
+                SELECT masterid, yearid
+                FROM awardsplayers
+                WHERE awardid = 'Most Valuable Player'
+        ),
+        wsp as (
+                SELECT a.masterid, a.yearid
+                FROM awardsplayers a
+                JOIN mvp m ON m.masterid = a.masterid AND m.yearid = a.yearid
+                WHERE awardid = 'World Series MVP'
+        )
+        SELECT a.masterid, a.yearid INTO player_id, season
+        FROM awardsplayers a
+        JOIN wsp w ON w.masterid = a.masterid AND w.yearid = a.yearid
+        WHERE awardid = 'Gold Glove';
+        
+        INSERT INTO halloffame (masterid, yearid, votedby, category) (SELECT player_id, season, 'db', 'Player');        
+        RETURN NULL;
+    END;
+$add_if_hall_of_fame$ LANGUAGE plpgsql;
+
+-- trigger that calls previous procedure after each isert or update on awardsplayers
+CREATE TRIGGER add_if_hall_of_fame_trig AFTER INSERT OR UPDATE
+ON awardsplayers
+FOR EACH ROW
+EXECUTE PROCEDURE add_if_hall_of_fame();
+
 -- 6
 ALTER TABLE public.teams
 	ADD CONSTRAINT teamNameConstraint CHECK (name != null);
