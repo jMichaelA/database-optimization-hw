@@ -10,6 +10,36 @@ ALTER TABLE public.teams
         ADD CONSTRAINT league_constraint CHECK (lgid IN ('NL','AL'));
 
 -- 4
+CREATE OR REPLACE FUNCTION loose()
+RETURNS TRIGGER AS $loose$
+
+DECLARE
+	team_id varchar(3);
+	year_id int4;
+
+  BEGIN
+
+	SELECT teamid, yearid INTO team_id, year_id
+		FROM teams
+		WHERE l > 161;
+
+  THEN
+  
+	DELETE *
+		FROM batting 
+		WHERE teamid = team_id AND yearid = year_id
+	RETURN NULL;
+END;
+$loose$ LANGUAGE plpgsql;
+
+
+
+CREATE TRIGGER loose
+	AFTER INSERT OR UPDATE ON teams
+	FOR EACH ROW
+	EXECUTE PROCEDURE loose();
+	
+	
 
 -- 5
 
