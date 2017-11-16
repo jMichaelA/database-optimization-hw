@@ -100,5 +100,25 @@ CREATE INDEX battingID ON public.batting (teamid);
 
 
 -- 7 
+I attempted to add these indices, but none of them made any difference. 
 
+CREATE INDEX teamid ON public.salaries (teamid);  	//nothing                   
+CREATE INDEX yearid ON public.salaries (yearid); 	//nothing                     
+CREATE INDEX lgid ON public.salaries (lgid);		//nothing        			  
+CREATE INDEX salary ON public.salaries (salary);	//nothing                     
+
+CREATE INDEX tteamid ON public.teams (teamid); 	        //nothing                   
+CREATE INDEX tyearid ON public.teams (yearid);	        //nothing                     
+CREATE INDEX tlgid ON public.teams (lgid);		//nothing
+CREATE INDEX tname ON public.teams (name);		//nothing                     
+
+Also I deleted a line in the last WHERE statement that did not change the end results, but also did not reduce the cost. 
+WHERE
+    A.yearID = B.yearID + 1
+        AND (A.S * 2) <= (B.S)
+        AND A.teamID = B.teamID
+        AND A.lgID = B.lgID
+        AND teams.yearID = A.yearID
+--      AND teams.lgID = A.lgID    ********Removed********
+        AND teams.teamID = A.teamID 	
 
