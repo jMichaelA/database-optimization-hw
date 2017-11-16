@@ -35,9 +35,14 @@ DECLARE
         SELECT a.masterid, a.yearid INTO player_id, season
         FROM awardsplayers a
         JOIN wsp w ON w.masterid = a.masterid AND w.yearid = a.yearid
-        WHERE awardid = 'Gold Glove';
-        
-        INSERT INTO halloffame (masterid, yearid, votedby, category) (SELECT player_id, season, 'db', 'Player');        
+        LEFT JOIN halloffame h ON a.masterid = h.masterid AND a.yearid = h.yearid
+        WHERE awardid = 'Gold Glove'
+        AND h.masterid IS NULL
+        AND h.yearid IS NULL
+        ;
+        IF player_id IS NOT NULL AND season IS NOT NULL THEN
+                INSERT INTO halloffame (masterid, yearid, votedby, category) (SELECT player_id, season, 'db', 'Player');        
+        END IF;
         RETURN NULL;
     END;
 $add_if_hall_of_fame$ LANGUAGE plpgsql;
