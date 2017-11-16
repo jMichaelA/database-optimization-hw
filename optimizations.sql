@@ -14,7 +14,18 @@ CREATE INDEX ON public.appearances (masterid);
 
 
 -- 4
-
+SELECT name, t.yearid, w
+	FROM teams t
+	
+JOIN (
+     SELECT 
+         max(w), yearid
+         from teams 
+         group by w, yearid
+    ) as y 
+        ON t.yearid = y.yearid  
+        AND t.w = y.max
+        ORDER BY yearid ASC
 
 -- 5
 SELECT
