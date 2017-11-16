@@ -414,10 +414,10 @@ CREATE INDEX yearid ON public.salaries (yearid); 	//nothing
 CREATE INDEX lgid ON public.salaries (lgid);		//nothing        			  
 CREATE INDEX salary ON public.salaries (salary);	//nothing                     
 
-CREATE INDEX tteamid ON public.teams (teamid); 	    //nothing                   
-CREATE INDEX tyearid ON public.teams (yearid);	    //nothing                     
-CREATE INDEX tlgid ON public.teams (lgid);			//nothing
-CREATE INDEX tname ON public.teams (name);			//nothing                     
+CREATE INDEX tteamid ON public.teams (teamid); 	        //nothing                   
+CREATE INDEX tyearid ON public.teams (yearid);	        //nothing                     
+CREATE INDEX tlgid ON public.teams (lgid);		//nothing
+CREATE INDEX tname ON public.teams (name);		//nothing                     
 
 I deleted the line: AND teams.lgID = A.lgID
 and that didn't lower the cost and still gives the same result. 
@@ -451,9 +451,3 @@ WHERE
         AND teams.yearID = A.yearID
 --      AND teams.lgID = A.lgID    ********Removed********
         AND teams.teamID = A.teamID 	
-        
-
-
-       
-
-        
